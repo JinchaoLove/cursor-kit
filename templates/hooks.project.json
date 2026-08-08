@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "python3 .cursor/hooks/before-shell-execution.py",
+        "failClosed": true
+      }
+    ],
+    "sessionStart": [
+      {
+        "command": "python3 .cursor/hooks/ecc-session-start.py"
+      }
+    ],
+    "stop": [
+      {
+        "command": "python3 .cursor/hooks/ecc-session-stop.py"
+      }
+    ]
+  }
+}

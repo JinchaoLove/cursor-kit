@@ -1,0 +1,13 @@
+---
+description: Routing rule for software/ML engineering tasks (开发 / 编码 / 重构 / 调试 / 测试 / 部署)
+alwaysApply: true
+---
+
+# Engineering skills
+
+For 开发 / 编码 / 重构 / 调试 / 测试 / 部署 / build / refactor / debug / fix / implement:
+
+1. Follow `.cursor/skills/project-development/SKILL.md` for the workflow and quality bar.
+2. Match existing conventions in the repo before introducing new ones.
+3. Prefer small, reversible changes; verify (run/build/test) before claiming done.
+4. For research/ML code, keep runs reproducible: pinned deps, config-driven, seeded, logged.
