@@ -61,7 +61,6 @@ cd /path/to/your/repo
 
 - `ai-research-hub`、`ai-literature-review`、`ai-frontier-survey`、`paper-lookup`
 - `research-plan`、`hypothesis-generation`、`scientific-brainstorming`、`scientific-critical-thinking`
-- `deep-research`（需自备 `GEMINI_API_KEY`）
 - `project-development`
 
 **ECC 精简**

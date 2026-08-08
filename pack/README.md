@@ -18,7 +18,6 @@ Skills + rules for deep AI research and engineering, tuned for **multimodal inte
     ├── ai-frontier-survey/         # 前沿技术细节调研 (SOTA dissection)
     ├── ai-literature-review/       # 综述 / systematic synthesis
     ├── paper-lookup/               # multi-API paper/citation search (+ script)
-    ├── deep-research/              # opt-in Gemini web research (+ script)
     ├── research-plan/              # 详细研究方案 (+ template)
     ├── hypothesis-generation/      # observations → testable hypotheses
     ├── scientific-brainstorming/   # divergent ideation
@@ -43,10 +42,6 @@ brainstorm → frontier survey → literature review → hypothesis → research
 ```bash
 # paper-lookup (no key needed for arXiv/OpenAlex/Crossref)
 pip install -r skills/paper-lookup/requirements.txt
-
-# deep-research (needs GEMINI_API_KEY)
-pip install -r skills/deep-research/requirements.txt
-cp skills/deep-research/.env.example skills/deep-research/.env   # add key
 ```
 
-Optional keys raise limits / unlock features: `SEMANTIC_SCHOLAR_API_KEY`, `OPENALEX_MAILTO` (paper-lookup); `GEMINI_API_KEY` (deep-research).
+Optional keys raise limits / unlock features: `SEMANTIC_SCHOLAR_API_KEY`, `OPENALEX_MAILTO` (paper-lookup).
