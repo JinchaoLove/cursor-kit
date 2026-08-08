@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "node .cursor/hooks/before-shell-execution.js",
+        "failClosed": true
+      }
+    ],
+    "sessionStart": [
+      {
+        "command": "node .cursor/hooks/ecc-session-start.js"
+      }
+    ],
+    "stop": [
+      {
+        "command": "node .cursor/hooks/ecc-session-stop.js"
+      }
+    ]
+  }
+}

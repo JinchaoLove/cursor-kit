@@ -1,0 +1,12 @@
+---
+description: ECC security baseline for agent configs and secrets
+alwaysApply: true
+---
+
+# Security baseline（ECC + Cursor）
+
+- 禁止在代码、rules、skills、memory、instincts 中硬编码密钥。
+- 改 hooks / MCP / 权限相关配置后，运行或请求 `ecc-security-scan`。
+- Shell 高危命令由 `.cursor/hooks/before-shell-execution.js` 硬拦截；不要绕过。
+- 发现疑似泄露：立即停止扩改 → 汇报 → 轮换密钥 → 排查同类问题。
+- 生产库与破坏性操作：只读账号 + 人工确认；提示词约束不能替代硬拦截。

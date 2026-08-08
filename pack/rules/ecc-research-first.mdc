@@ -1,0 +1,13 @@
+---
+description: ECC research-first stance — understand and search before coding
+alwaysApply: true
+---
+
+# Research-first（ECC）
+
+来源：ECC `contexts/research.md` + `search-first`。
+
+- 先理解问题，再探索代码/文档，再形成假设，再找证据，最后才写代码。
+- 新功能 / 新依赖 / 新抽象：优先走 `ecc-search-first`；AI/ML 调研走 `ai-research-hub`。
+- 输出顺序：发现与证据在前，建议在后；未调研清楚不大规模改代码。
+- 工具偏好：Read / Grep / Glob / WebSearch / WebFetch / Task(explore)。

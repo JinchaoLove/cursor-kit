@@ -1,0 +1,9 @@
+.DS_Store
+*.bak.*
+.vscode/
+.idea/
+pack/ecc/sessions/*
+!pack/ecc/sessions/.gitignore
+!pack/ecc/sessions/.gitkeep
+**/.env
+.tmp-install-demo/

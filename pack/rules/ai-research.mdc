@@ -1,0 +1,11 @@
+---
+description: Routing rule for AI/ML research tasks (调研 / 综述 / 研究方案 / SOTA / 假设 / 批判性分析 / deep research)
+alwaysApply: true
+---
+
+# AI research skills
+
+For 调研 / 综述 / 研究方案 / SOTA / 假设 / 批判性分析 / deep research / 前沿 / due diligence:
+
+1. Follow `.cursor/skills/ai-research-hub/SKILL.md` for routing to the right sub-skill.
+2. Cite primary sources (arXiv IDs, DOIs, official repos/tech reports); never invent citations or numbers.
