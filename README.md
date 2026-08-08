@@ -102,9 +102,10 @@ cursor-kit/
 └── README.md
 ```
 
-## 从 cursor-security-kit 迁移
+## 参考与致谢
 
-本仓库接替 [cursor-security-kit](https://github.com/JinchaoLove/cursor-security-kit)：安全拦截仍在，并扩展为完整技能/规则包。旧仓库请改用本仓库安装。
+- **危险命令硬拦截**：思路来自教程 [别让 Cursor 删库跑路：50 行脚本锁死 AI 的危险权限](https://mdnice.com/writing/84654a4a7ff2409d92bea1ffb50261f3)，并适配当前 Cursor Hooks 的 stdin/stdout JSON 协议（见 [Hooks 文档](https://cursor.com/docs/hooks)）。
+- **ECC 精简映射**：技能体系、研究优先、本能/持续学习、记忆与安全扫描等，精简改编自 [affaan-m/ECC](https://github.com/affaan-m/ECC)（Everything Claude Code）。本仓库只保留对 Cursor 最有用的一层，并非 ECC 全量安装。
 
 ## License
 
