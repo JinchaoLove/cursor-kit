@@ -3,18 +3,18 @@
   "hooks": {
     "beforeShellExecution": [
       {
-        "command": "node ./hooks/before-shell-execution.js",
+        "command": "python3 ./hooks/before-shell-execution.py",
         "failClosed": true
       }
     ],
     "sessionStart": [
       {
-        "command": "node ./hooks/ecc-session-start.js"
+        "command": "python3 ./hooks/ecc-session-start.py"
       }
     ],
     "stop": [
       {
-        "command": "node ./hooks/ecc-session-stop.js"
+        "command": "python3 ./hooks/ecc-session-stop.py"
       }
     ]
   }

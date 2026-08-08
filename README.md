@@ -78,11 +78,13 @@ cd /path/to/your/repo
 
 ## 依赖
 
-- `bash`、`node`
-- `python3`（合并 `hooks.json` / 改 settings）
+- `bash`
+- `python3`（hooks、合并 `hooks.json`、改 settings、自测）
 - 可选：`rsync`（更快拷贝）
 
 脚本技能额外依赖见 `pack/skills/*/requirements.txt`（如 `paper-lookup`）。
+
+**不需要 Node.js。** Hooks 已改为标准库 Python，记忆/本能读写也只依赖本地 Markdown + `python3`。
 
 ## 目录结构
 

@@ -89,9 +89,9 @@ backup_file() {
 }
 
 run_test() {
-  need_cmd node
+  need_cmd python3
   echo "Running security hook self-test..."
-  node "${ROOT}/hooks/self-test.js"
+  python3 "${ROOT}/hooks/self-test.py"
 }
 
 resolve_targets() {
@@ -144,7 +144,7 @@ install_skills_rules_hooks() {
 
   echo "Installing hooks scripts → ${DEST_DIR}/hooks"
   mkdir -p "${DEST_DIR}/hooks"
-  for f in before-shell-execution.js ecc-session-start.js ecc-session-stop.js self-test.js; do
+  for f in before-shell-execution.py ecc-session-start.py ecc-session-stop.py self-test.py; do
     if [[ -f "${PACK}/hooks/${f}" ]]; then
       if [[ -f "${DEST_DIR}/hooks/${f}" && "$FORCE" -ne 1 ]]; then
         if ! cmp -s "${PACK}/hooks/${f}" "${DEST_DIR}/hooks/${f}"; then
@@ -154,6 +154,16 @@ install_skills_rules_hooks() {
       fi
       cp "${PACK}/hooks/${f}" "${DEST_DIR}/hooks/${f}"
       chmod +x "${DEST_DIR}/hooks/${f}" 2>/dev/null || true
+    fi
+  done
+  # Drop legacy Node hook scripts if present (migrated to Python).
+  for legacy in before-shell-execution.js ecc-session-start.js ecc-session-stop.js self-test.js; do
+    if [[ -f "${DEST_DIR}/hooks/${legacy}" ]]; then
+      python3 - "${DEST_DIR}/hooks/${legacy}" <<'PY'
+import os, sys
+os.remove(sys.argv[1])
+print("Removed legacy", sys.argv[1])
+PY
     fi
   done
 }
@@ -211,7 +221,12 @@ def is_managed(h):
         return False
     cmd = str(h.get("command", ""))
     base = cmd.split("/")[-1]
-    return cmd in managed_cmds or base in managed_cmds or base.endswith("before-shell-execution.js") or base.startswith("ecc-session-")
+    return (
+        cmd in managed_cmds
+        or base in managed_cmds
+        or "before-shell-execution." in base
+        or base.startswith("ecc-session-")
+    )
 
 for event, want_arr in want.get("hooks", {}).items():
     cur = [h for h in hooks.get(event, []) if not is_managed(h)]
@@ -280,7 +295,7 @@ for event, arr in list(hooks.items()):
             and (
                 h.get("command") in managed
                 or str(h.get("command", "")).split("/")[-1] in managed
-                or str(h.get("command", "")).endswith("before-shell-execution.js")
+                or "before-shell-execution." in str(h.get("command", ""))
                 or "ecc-session-" in str(h.get("command", ""))
             )
         )
@@ -306,7 +321,7 @@ copy_readme() {
 }
 
 main() {
-  need_cmd node
+  need_cmd python3
   [[ -d "$PACK" ]] || { echo "Missing pack/ directory" >&2; exit 1; }
 
   if [[ "$DO_TEST" -eq 1 ]]; then
