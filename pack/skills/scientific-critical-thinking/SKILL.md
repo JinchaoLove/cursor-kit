@@ -1,7 +1,7 @@
 ---
 name: scientific-critical-thinking
 description: Evaluate scientific and AI research claims for evidence quality. Use when assessing experimental design, baselines, metrics validity, bias/confounders, overclaimed SOTA, or critiquing papers and research plans. Also triggers on 批判性分析, 挑刺, review claims, or eval protocol critique.
-metadata: {"version": "1.0", "skill-author": "lijinchao"}
+metadata: {"version": "1.0", "skill-author": "lijinchao, cursor"}
 ---
 
 # Scientific Critical Thinking

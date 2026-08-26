@@ -23,6 +23,7 @@ Skills + rules for deep AI research and engineering, tuned for **multimodal inte
     ├── scientific-brainstorming/   # divergent ideation
     ├── scientific-critical-thinking/  # 批判性分析 / claim vetting
     ├── project-development/        # 开发 / reproducible ML engineering
+    ├── agent-wake-poll/            # 长任务 one-shot wake 轮询，防 hang
     ├── ecc-hub/                    # ECC Cursor slim router
     ├── ecc-search-first/           # research-before-coding
     ├── ecc-instincts/              # continuous learning / instincts

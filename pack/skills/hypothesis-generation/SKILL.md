@@ -1,7 +1,7 @@
 ---
 name: hypothesis-generation
 description: Structured hypothesis formulation from observations. Use when experimental results, ablations, or failures need testable hypotheses, mechanism proposals, and experiment designs. Turns "X happened / X didn't work" into falsifiable claims with predicted outcomes and the minimal experiment to test them. For open-ended ideation use scientific-brainstorming.
-metadata: {"version": "1.0", "skill-author": "lijinchao"}
+metadata: {"version": "1.0", "skill-author": "lijinchao, cursor"}
 ---
 
 # Hypothesis Generation

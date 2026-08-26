@@ -1,7 +1,7 @@
 ---
 name: paper-lookup
 description: Search academic literature APIs for papers, preprints, citations, and open-access full text with reproducible provenance. Covers arXiv, Semantic Scholar, OpenAlex, and Crossref out of the box (no key required). Use when searching for papers, citations, DOI/arXiv lookups, abstracts, open-access PDFs, preprints, citation graphs, author publications, or any scholarly query. Triggers on "find papers on X", "look up this DOI/arXiv", "who cites this", "get me the PDF".
-metadata: {"version": "1.1", "skill-author": "lijinchao", "openclaw": {"envVars": [{"name": "SEMANTIC_SCHOLAR_API_KEY", "required": false, "description": "Raises Semantic Scholar rate limits."}, {"name": "OPENALEX_MAILTO", "required": false, "description": "Email for the OpenAlex polite pool (faster, more reliable)."}]}}
+metadata: {"version": "1.1", "skill-author": "lijinchao, cursor", "openclaw": {"envVars": [{"name": "SEMANTIC_SCHOLAR_API_KEY", "required": false, "description": "Raises Semantic Scholar rate limits."}, {"name": "OPENALEX_MAILTO", "required": false, "description": "Email for the OpenAlex polite pool (faster, more reliable)."}]}}
 required_environment_variables: [{"name": "SEMANTIC_SCHOLAR_API_KEY", "prompt": "Semantic Scholar API key (raises rate limits).", "required_for": "optional features"}, {"name": "OPENALEX_MAILTO", "prompt": "Email for OpenAlex polite pool.", "required_for": "optional features"}]
 ---
 

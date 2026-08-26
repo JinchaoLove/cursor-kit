@@ -16,6 +16,7 @@ DO_TEST=0
 DO_UNINSTALL=0
 FORCE=0
 SKIP_ECC_DATA=0
+HOOKS_PROFILE="default"  # default | autonomous
 
 usage() {
   cat <<'EOF'
@@ -33,12 +34,14 @@ Options:
   --with-settings    Patch Cursor user settings (Workspace Trust + disable auto tasks)
   --force            Overwrite conflicting managed files
   --skip-ecc-data    Do not copy seed instincts/memory (still creates dirs)
+  --autonomous       Use hooks.autonomous*.json (deny-only shell gate, failClosed=false; no session hooks)
   --test             Run security hook self-test and exit
   --uninstall        Remove kit-managed hooks entries + optional purge (see below)
   -h, --help         Show help
 
 Examples:
   ./install.sh --global --with-settings
+  ./install.sh --global --autonomous --force
   ./install.sh --project --force
   ./install.sh --test
 EOF
@@ -51,6 +54,7 @@ while [[ $# -gt 0 ]]; do
     --with-settings) WITH_SETTINGS=1; shift ;;
     --force) FORCE=1; shift ;;
     --skip-ecc-data) SKIP_ECC_DATA=1; shift ;;
+    --autonomous) HOOKS_PROFILE="autonomous"; shift ;;
     --test) DO_TEST=1; shift ;;
     --uninstall) DO_UNINSTALL=1; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -97,10 +101,18 @@ run_test() {
 resolve_targets() {
   if [[ "$MODE" == "global" ]]; then
     DEST_DIR="${HOME}/.cursor"
-    TEMPLATE="${ROOT}/templates/hooks.global.json"
+    if [[ "$HOOKS_PROFILE" == "autonomous" ]]; then
+      TEMPLATE="${ROOT}/templates/hooks.autonomous.json"
+    else
+      TEMPLATE="${ROOT}/templates/hooks.global.json"
+    fi
   else
     DEST_DIR="$(pwd)/.cursor"
-    TEMPLATE="${ROOT}/templates/hooks.project.json"
+    if [[ "$HOOKS_PROFILE" == "autonomous" ]]; then
+      TEMPLATE="${ROOT}/templates/hooks.autonomous.project.json"
+    else
+      TEMPLATE="${ROOT}/templates/hooks.project.json"
+    fi
   fi
   HOOKS_JSON="${DEST_DIR}/hooks.json"
 }
@@ -234,6 +246,18 @@ for event, want_arr in want.get("hooks", {}).items():
     for h in want_arr:
         cur.append(h)
     hooks[event] = cur
+
+# Drop managed hooks from events absent in the new template
+# (e.g. switching to autonomous removes sessionStart/stop).
+for event, arr in list(hooks.items()):
+    if event in want.get("hooks", {}):
+        continue
+    kept = [h for h in arr if not is_managed(h)]
+    if kept:
+        hooks[event] = kept
+    else:
+        del hooks[event]
+
 data["hooks"] = hooks
 with open(path, "w", encoding="utf-8") as f:
     json.dump(data, f, indent=2, ensure_ascii=False)
@@ -337,6 +361,7 @@ main() {
   resolve_targets
   echo "Install mode: ${MODE}"
   echo "Destination:  ${DEST_DIR}"
+  echo "Hooks profile: ${HOOKS_PROFILE} ($(basename "$TEMPLATE"))"
   mkdir -p "$DEST_DIR"
   install_skills_rules_hooks
   install_ecc_data

@@ -1,7 +1,7 @@
 ---
 name: ai-frontier-survey
 description: Dissects recent AI/ML frontier methods with architecture, data, training, evaluation, and reproducibility detail. Use for 前沿调研, SOTA 细节, 技术拆解, method comparison, or technical due diligence.
-metadata: {"version": "1.2", "skill-author": "lijinchao"}
+metadata: {"version": "1.2", "skill-author": "lijinchao, cursor"}
 ---
 
 # AI Frontier Survey

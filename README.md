@@ -45,6 +45,15 @@ cd /path/to/your/repo
 
 装完后：`Cmd/Ctrl+Shift+P` → **Developer: Reload Window**。
 
+### 开发机一键（CLI + 本仓库技能）
+
+`install-cc.sh`：装 Cursor Agent CLI（代理 / proxychains / `agent-proxy`），并调用  
+`./install.sh --global --force` 把 `pack/` 同步到 **`~/.cursor`**。
+
+Cursor **只认** `~/.cursor`（及项目 `.cursor`），不能把本仓库路径直接当 `~/.cursor` 用；symlink 发现技能也不稳定。更新技能后重跑 `./install.sh --global --force`。跳过同步：`SKIP_KIT_INSTALL=1 ./install-cc.sh`。
+
+无人值守 / 过夜队列（**需显式开启**）：`AUTONOMOUS_HOOKS=1 ./install-cc.sh` 或 `./install.sh --global --autonomous --force`——deny-only、`failClosed=false`、无 session 钩子。`install-cc` 默认仍装标准 hooks。
+
 ## 会装到哪里
 
 | 模式 | 目标 |
@@ -62,6 +71,7 @@ cd /path/to/your/repo
 - `ai-research-hub`、`ai-literature-review`、`ai-frontier-survey`、`paper-lookup`
 - `research-plan`、`hypothesis-generation`、`scientific-brainstorming`、`scientific-critical-thinking`
 - `project-development`
+- `agent-wake-poll`（长任务 one-shot wake 轮询，防 hang）
 
 **ECC 精简**
 
@@ -72,9 +82,11 @@ cd /path/to/your/repo
 
 | 事件 | 作用 |
 |------|------|
-| `beforeShellExecution` | 拦截 `rm -rf` / `DROP` / `git push --force` 等 |
-| `sessionStart` | 注入高置信度本能 + 最近会话摘要 |
-| `stop` | 写入会话 stub（供「学习本会话」） |
+| `beforeShellExecution` | 拦截 `rm -rf` / `DROP` / `git push --force` 等（默认无 ASK，避免卡住无人值守） |
+| `sessionStart` | 注入高置信度本能 + 最近会话摘要（`--autonomous` 不装） |
+| `stop` | 写入会话 stub（`--autonomous` 不装） |
+
+`--autonomous` 使用 `templates/hooks.autonomous.json`：仅 shell deny 闸门且 `failClosed: false`。
 
 ## 依赖
 

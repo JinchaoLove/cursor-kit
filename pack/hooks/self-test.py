@@ -14,7 +14,11 @@ CASES = [
     ("deny-rm", {"command": "r" + "m -rf /tmp/foo"}, "deny"),
     ("deny-drop", {"command": "DROP" + " TABLE users"}, "deny"),
     ("deny-force", {"command": "git push " + "--force origin main"}, "deny"),
-    ("ask-delete", {"command": "DELETE" + " FROM logs WHERE id=1"}, "ask"),
+    ("deny-truncate-table", {"command": "TRUNCATE" + " TABLE logs"}, "deny"),
+    ("deny-reset-hard", {"command": "git reset " + "--hard HEAD"}, "deny"),
+    ("allow-delete-where", {"command": "DELETE" + " FROM logs WHERE id=1"}, "allow"),
+    ("allow-update", {"command": "UPDATE" + " t SET x=1 WHERE id=1"}, "allow"),
+    ("allow-truncate-word", {"command": "echo truncate_checkpoint"}, "allow"),
     ("allow-status", {"command": "git status"}, "allow"),
 ]
 

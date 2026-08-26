@@ -1,7 +1,7 @@
 ---
 name: project-development
 description: General software/ML engineering workflow for implementation work. Use for 开发 / 编码 / 重构 / 调试 / 测试 / 部署, building or changing code, setting up a repo, writing training/eval scripts, fixing bugs, or turning a research plan into runnable, reproducible code. Language- and framework-agnostic, with an ML-research reproducibility bias.
-metadata: {"version": "1.0", "skill-author": "lijinchao"}
+metadata: {"version": "1.0", "skill-author": "lijinchao, cursor"}
 ---
 
 # Project Development

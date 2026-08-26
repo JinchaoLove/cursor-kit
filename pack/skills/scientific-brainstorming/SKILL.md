@@ -1,7 +1,7 @@
 ---
 name: scientific-brainstorming
 description: Creative research ideation and exploration. Use for open-ended brainstorming, interdisciplinary analogies, challenging assumptions, or identifying research gaps. Best early-stage before a concrete plan. For testable hypotheses from observations use hypothesis-generation; for a structured plan use research-plan.
-metadata: {"version": "1.0", "skill-author": "lijinchao"}
+metadata: {"version": "1.0", "skill-author": "lijinchao, cursor"}
 ---
 
 # Scientific Brainstorming

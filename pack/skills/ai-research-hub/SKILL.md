@@ -1,7 +1,7 @@
 ---
 name: ai-research-hub
 description: Routes AI/ML research tasks to literature review, frontier analysis, hypothesis, planning, critique, or implementation skills. Use for 调研, 综述, SOTA, 研究方案, 假设, 批判性分析, deep research, or technical due diligence.
-metadata: {"version": "1.2", "skill-author": "lijinchao", "domain": "multimodal-generation, av-joint-gen, agents, world-models"}
+metadata: {"version": "1.2", "skill-author": "lijinchao, cursor", "domain": "multimodal-generation, av-joint-gen, agents, world-models"}
 ---
 
 # AI Research Hub

@@ -1,7 +1,7 @@
 ---
 name: research-plan
 description: Produces focused, executable AI research plans (research-plan.md). Use for 研究方案, 研究计划, experiment plans, proposals, or roadmaps. Selects one coherent route and specifies the minimum detail needed to build and falsify it. For a deep technical report on how a method works, use ai-frontier-survey (technical-analysis.md) instead.
-metadata: {"version": "1.2", "skill-author": "lijinchao"}
+metadata: {"version": "1.2", "skill-author": "lijinchao, cursor"}
 ---
 
 # Research Plan

@@ -1,7 +1,7 @@
 ---
 name: ai-literature-review
 description: Produces broad, structured AI/ML literature reviews and taxonomies. Use for 综述, literature review, related work, landscape, coverage analysis, or literature-review.md. Prioritizes defensible coverage and synthesis over per-paper technical depth.
-metadata: {"version": "1.2", "skill-author": "lijinchao"}
+metadata: {"version": "1.2", "skill-author": "lijinchao, cursor"}
 ---
 
 # AI Literature Review
