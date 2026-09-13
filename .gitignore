@@ -7,3 +7,4 @@ pack/ecc/sessions/*
 !pack/ecc/sessions/.gitkeep
 **/.env
 .tmp-install-demo/
+.cache/

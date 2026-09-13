@@ -100,7 +100,9 @@ run_test() {
 
 resolve_targets() {
   if [[ "$MODE" == "global" ]]; then
-    DEST_DIR="${HOME}/.cursor"
+    # CURSOR_KIT_DEST overrides the default when ~/.cursor is not writable
+    # (e.g. a symlink into a read-only network mount).
+    DEST_DIR="${CURSOR_KIT_DEST:-${HOME}/.cursor}"
     if [[ "$HOOKS_PROFILE" == "autonomous" ]]; then
       TEMPLATE="${ROOT}/templates/hooks.autonomous.json"
     else

@@ -1,80 +1,98 @@
 # agent-wake-poll examples
 
-## Arm wake
+`W="python3 .cursor/skills/agent-wake-poll/wake.py"`，在 workspace 根执行。
+
+## 一轮完整交互
+
+```
+$ $W check --tag pe49
+本机地址：10.12.34.56
+总卡数：16
+完整脚本：/abs/launch_pe49.sh
+日志目录：/abs/logs
+输出目录：/abs/out
+任务序号：第 1 项 / 共 2 项
+下次检查：2026-08-28 10:15（delay=1140s）
+本作业：12/49（24%），预计 2026-08-28 10:43 完成
+任务队列：预计 2026-08-28 12:40 完成
+已用/剩余：2h36m / 1h24m
+ACTION=arm delay=1140
+```
+
+→ 立刻 arm（Shell: `block_until_ms=0`, `notify_on_output.pattern=^AGENT_LOOP_WAKE_pe49`）：
+
+```
+$ $W arm --tag pe49
+armed pe49 delay=1140s next_wake=2026-08-28 10:15 killed=-
+```
+
+→ 然后把 `check` 的 stdout 贴给用户。
+
+## ACTION=launch（队列推进）
+
+```
+$ $W check --tag pe49
+...
+本项完成：combined_video 49/49
+下一项：queue[1] bash /abs/launch_te_build.sh
+ACTION=launch
+
+$ bash /abs/launch_te_build.sh > /abs/te.log 2>&1 &
+$ $W started --tag pe49
+queue[1] running since 2026-08-28 12:41:03  ACTION=arm
+$ $W arm --tag pe49
+```
+
+## ACTION=hang
+
+`check` 会连带打印 log tail、`liveness_cmd` 结果、`last_fail` / `retry` / `autonomous`：
+
+```
+停滞 2 轮（combined_video 停在 12）
+--- log tail: /abs/run.log
+RuntimeError: CUDA out of memory
+last_fail=out of memory retry=— autonomous=True
+ACTION=hang
+```
+
+`autonomous=True` 且 `retry` 为空 → 重跑一次，写回 retry 后继续：
 
 ```bash
-DELAY=1800  # ≤3600
-sleep "$DELAY"
-echo "AGENT_LOOP_WAKE_myjob"
+bash /abs/launch_pe49.sh > /abs/run.log 2>&1 &
+$W started --tag pe49          # 重置 metric/stall/started_at
+$W arm --tag pe49
 ```
 
-`block_until_ms: 0`，`notify_on_output.pattern: ^AGENT_LOOP_WAKE_myjob`。
+不可自动处理（需改代码 / 装依赖 / 换配置）→ 不 arm，把 tail 和判断报给用户。
 
-## Scratch 更新（每轮）
-
-```python
-# pseudocode
-prev, now = job["metric_prev"], measure()
-if now > prev:
-    job["stall_count"] = 0
-else:
-    job["stall_count"] += 1
-job["metric_prev"], job["metric_now"] = now, now
-# then DELAY / next_wake / updated_at
-```
-
-## 最小 state
-
-```json
-{
-  "updated_at": "2026-08-26 12:14:00",
-  "started_at": "2026-08-26 09:40:00",
-  "current": 4,
-  "queue_complete": false,
-  "autonomous": true,
-  "deadline": null,
-  "wake_tag": "cameo49",
-  "next_wake": "12:44",
-  "eta": "13:10",
-  "eta_queue": "15:40",
-  "queue": [{
-    "id": 4,
-    "status": "running",
-    "pid_hint": 1338884,
-    "log": "/abs/results/run_retry.log",
-    "started_at": "2026-08-26 11:20:00",
-    "metric_name": "video_latent",
-    "metric_now": 12,
-    "metric_target": 24,
-    "metric_prev": 8,
-    "stall_count": 0,
-    "last_fail": "torchcodec AssertionError",
-    "retry": "reuse_ref_audios_latent",
-    "note": "dit 12/24 ~2.6s/step"
-  }]
-}
-```
-
-回用户：
-
-```text
-下次检查：12:44
-本作业：12/24（50%），预计 13:10 完成
-任务队列：第 4/8 项，预计 15:40 完成
-已用/剩余：2h36m / 3h24m
-```
-
-## 检查（浅）
+## 度量写法
 
 ```bash
-ps -p "$PID" >/dev/null && echo alive || echo dead
-grep -E 'EXIT:|Traceback|AssertionError|illegal memory' "$LOG" | tail -5
-ls "$EXP/dit/video_latent" 2>/dev/null | wc -l   # 勿对大盘 find -R
+# 嵌套产出
+--metric-cmd "find /abs/out -path '*/combined_video/*.mp4' 2>/dev/null | wc -l"
+# KFS / 大目录：数 log 行，别 find
+--metric-cmd "grep -c 'Combining:' /abs/run.log 2>/dev/null || echo 0"
+# 单产物
+--metric-cmd "test -f /abs/te.whl && echo 1 || echo 0"  --metric-target 1
 ```
 
-## 停 wake
+## 启动脚本体检
 
-```bash
-kill "$WAKE_PID" 2>/dev/null || true
-pkill -f 'AGENT_LOOP_WAKE_myjob' 2>/dev/null || true
+`new` / `add` / `ACTION=launch` 时自动跑，也可单独：
+
 ```
+$ $W doctor --launch-cmd "CKPT=/other bash /abs/launch_bad.sh"
+WARN: launch_cmd 在命令行挂了 env：漏传会静默回落到脚本默认值（通常是上次实验的配置）
+WARN: /abs/launch_bad.sh:7 以 exec 收尾：exec 替换本进程，trap 和结尾行都不会执行
+WARN: /abs/launch_bad.sh:6 在 trap(restore) 之外又调了一次恢复：两条都触发会起双份实例互抢显存
+WARN: /abs/launch_bad.sh:2 身份参数留了 ${VAR:-默认} 覆盖口，外部 env 可静默改配置
+WARN: /abs/launch_bad.sh:5 日志重定向到相对路径 logs/train.log：cwd 一变就写飞，且 symlink 只读
+warnings=5
+```
+
+活性探测怎么写（模式必须锚定）见 [pitfalls.md](pitfalls.md)；可写进 job 的 `liveness_cmd` 字段。
+
+## state 位置
+
+默认 `.cursor/wake-poll/<tag>.json`（相对 cwd）；换位置用 `WAKE_POLL_DIR=/abs/dir`。
+schema 与 1.x 兼容，老队列可直接被 `check` 接管。

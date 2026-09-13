@@ -7,11 +7,48 @@
 # it at this repo path as a drop-in ~/.cursor. Symlinks are unreliable for
 # skill discovery; copy/sync via install.sh is the supported path.
 # Skip kit sync: SKIP_KIT_INSTALL=1 ./install-cc.sh
+# Pre-downloaded installer: CC_INSTALL_SCRIPT=/path/to/cursor-install.sh
+#   (default cache: <repo>/.cache/cursor-install.sh; delete it to re-fetch)
 # Autonomous hooks (opt-in): AUTONOMOUS_HOOKS=1 ./install-cc.sh
+# Force re-sync of skills/rules/hooks: -f / --force (shorthand for FORCE_KIT_INSTALL=1)
 
 set -e
 
+for arg in "$@"; do
+    case "$arg" in
+        -f|--force) export FORCE_KIT_INSTALL=1 ;;
+    esac
+done
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Config/skills dir for the Cursor CLI. Defaults to <repo parent>/.cursor because
+# ~/.cursor lives on a read-only ceph mount here, so both the kit rsync and the
+# CLI's own state writes (projects/, chats/) fail with EROFS / Read-only fs.
+# The CLI honours CURSOR_CONFIG_DIR, so agent-proxy exports it too.
+#
+# IMPORTANT: this dir is namespaced by hostname. When several machines share
+# the same ceph parent dir, a flat <repo parent>/.cursor is written
+# concurrently by every machine's chats/*.db (SQLite) and corrupts with
+# "database disk image is malformed". Keeping state under
+# .cursor-hosts/<hostname> gives every machine its own writable tree (still
+# on ceph, but no longer shared file-for-file) while skills/rules/hooks stay
+# in sync per host via the normal install.sh copy.
+HOST_TAG="$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo unknown-host)"
+KIT_DEST="${CURSOR_KIT_DEST:-$(cd "${ROOT}/.." && pwd)/.cursor-hosts/${HOST_TAG}}"
+export CURSOR_KIT_DEST="$KIT_DEST"
+
+# One-time migration: if the old flat shared dir exists and this host's dir
+# is new, carry over auth/config so you don't have to log in again. Chat
+# history/state is intentionally NOT migrated (it's what was corrupting).
+LEGACY_KIT_DEST="$(cd "${ROOT}/.." && pwd)/.cursor"
+if [ -d "$LEGACY_KIT_DEST" ] && [ ! -e "$KIT_DEST" ] && [ "$LEGACY_KIT_DEST" != "$KIT_DEST" ]; then
+    echo "Migrating auth/config from legacy shared dir -> ${KIT_DEST}"
+    mkdir -p "$KIT_DEST"
+    for f in auth.json cli-config.json; do
+        [ -f "${LEGACY_KIT_DEST}/${f}" ] && cp -a "${LEGACY_KIT_DEST}/${f}" "${KIT_DEST}/${f}"
+    done
+fi
+
 PROXY_HOST=oversea-squid4.sgp.txyun
 PROXY_PORT=11080
 
@@ -45,7 +82,16 @@ echo "   Cursor Agent CLI Installation"
 echo "=========================================="
 echo ""
 
-curl https://cursor.com/install -fsS | bash
+# Pre-downloaded installer wins; otherwise fetch once and cache it for re-runs.
+install_script="${CC_INSTALL_SCRIPT:-${ROOT}/.cache/cursor-install.sh}"
+if [ -s "$install_script" ]; then
+    echo "Using cached installer: $install_script"
+else
+    mkdir -p "$(dirname "$install_script")"
+    curl https://cursor.com/install -fsS -o "$install_script"
+    echo "Downloaded installer -> $install_script"
+fi
+bash "$install_script"
 
 # Ensure ~/.local/bin is on PATH (idempotent)
 if prepend_profile 'install-cc.sh: PATH' '# Cursor Agent CLI (added by install-cc.sh: PATH)
@@ -82,9 +128,11 @@ setup_proxychains() {
         echo "Installing proxychains4..."
         local sudo_cmd=""
         [ "$(id -u)" -ne 0 ] && sudo_cmd="sudo"
-        if ! $sudo_cmd apt-get install -y proxychains4 >/dev/null 2>&1; then
-            echo "WARNING: could not install proxychains4 — 'agent' may fail with [unavailable]"
-            return 1
+        # A fresh container has no package lists, so a bare install fails with
+        # "Unable to locate package" — always update first.
+        if ! ($sudo_cmd apt-get update && $sudo_cmd apt-get install -y proxychains4); then
+            echo "ERROR: could not install proxychains4 — 'agent' would fail with [unavailable]"
+            exit 1
         fi
     fi
 
@@ -117,6 +165,8 @@ unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
 # quiet_mode in the config is parsed too late to suppress the per-child
 # "[proxychains] DLL init" banner; this env var is checked first.
 export PROXYCHAINS_QUIET_MODE=1
+# ~/.cursor is read-only on this host; keep CLI state on a writable path.
+export CURSOR_CONFIG_DIR="${KIT_DEST}"
 exec proxychains4 -f ${pc_conf} "\${HOME}/.local/bin/agent" "\$@"
 EOF
     chmod +x "$wrapper"
@@ -134,11 +184,18 @@ EOF
 
 setup_proxychains || true
 
-# Sync cursor-kit pack → ~/.cursor (skills / rules / hooks / ecc)
 install_cursor_kit() {
     if [ "${SKIP_KIT_INSTALL:-0}" = "1" ]; then
-        echo "SKIP_KIT_INSTALL=1 — skipped cursor-kit → ~/.cursor"
+        echo "SKIP_KIT_INSTALL=1 - skipped cursor-kit -> ${KIT_DEST}"
         return 0
+    fi
+    if [ -d "${KIT_DEST}/skills" ] && [ "${FORCE_KIT_INSTALL:-0}" != "1" ]; then
+        echo "cursor-kit already present at ${KIT_DEST} - skipped (FORCE_KIT_INSTALL=1 to re-sync)"
+        return 0
+    fi
+    if [ ! -w "$(dirname "${KIT_DEST}")" ]; then
+        echo "WARNING: $(dirname "${KIT_DEST}") is not writable - skills not installed"
+        return 1
     fi
     if [ ! -x "${ROOT}/install.sh" ]; then
         echo "WARNING: ${ROOT}/install.sh missing — skills not installed"
@@ -146,7 +203,7 @@ install_cursor_kit() {
     fi
     echo ""
     echo "=========================================="
-    echo "   Installing cursor-kit → ~/.cursor"
+    echo "   Installing cursor-kit -> ${KIT_DEST}"
     echo "=========================================="
     # --force keeps skills (e.g. agent-wake-poll) in sync with this checkout
     # Autonomous hooks only when explicitly requested: AUTONOMOUS_HOOKS=1
@@ -173,8 +230,8 @@ echo ""
 echo "On headless machines: open the printed URL in your laptop browser."
 echo "Use 'agent-proxy' to run under proxychains4; plain 'agent' bypasses it."
 echo ""
-echo "Skills/rules/hooks: ~/.cursor (synced from ${ROOT}/pack)."
-echo "  Cannot use the repo path as ~/.cursor; re-run: ${ROOT}/install.sh --global --force"
+echo "Skills/rules/hooks: ${KIT_DEST} (synced from ${ROOT}/pack)."
+echo "  Re-sync: FORCE_KIT_INSTALL=1 ${ROOT}/install-cc.sh  (override dir: CURSOR_KIT_DEST=...)"
 echo "  Autonomous hooks (opt-in): AUTONOMOUS_HOOKS=1 ./install-cc.sh"
 echo "  Skip on next install-cc: SKIP_KIT_INSTALL=1"
 echo ""

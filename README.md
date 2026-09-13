@@ -5,7 +5,7 @@
 包含当前工作区沉淀的整套配置：
 
 - AI 研究技能（`ai-research-hub` 及子技能）
-- 工程技能（`project-development`）
+- 工程技能（`project-development`、`keep-it-simple`）
 - ECC 精简映射（`ecc-hub` / search-first / instincts / memory / security-scan / context-budget）
 - Always-on 规则（研究路由、工程路由、research-first、安全基线）
 - Shell 危险命令硬拦截 + sessionStart/stop 记忆钩子
@@ -70,7 +70,7 @@ Cursor **只认** `~/.cursor`（及项目 `.cursor`），不能把本仓库路�
 
 - `ai-research-hub`、`ai-literature-review`、`ai-frontier-survey`、`paper-lookup`
 - `research-plan`、`hypothesis-generation`、`scientific-brainstorming`、`scientific-critical-thinking`
-- `project-development`
+- `project-development`、`keep-it-simple`（KISS 审计：砍冗余代码与文档）
 - `agent-wake-poll`（长任务 one-shot wake 轮询，防 hang）
 
 **ECC 精简**
