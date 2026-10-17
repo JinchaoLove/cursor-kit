@@ -70,7 +70,7 @@ Cursor **只认** `~/.cursor`（及项目 `.cursor`），不能把本仓库路�
 
 - `ai-research-hub`、`ai-literature-review`、`ai-frontier-survey`、`paper-lookup`
 - `research-plan`、`hypothesis-generation`、`scientific-brainstorming`、`scientific-critical-thinking`
-- `project-development`、`keep-it-simple`（KISS 审计：砍冗余代码与文档）
+- `project-development`、`keep-it-simple`（KISS 审计：砍冗余代码与文档）、`code-review`（代码评审）
 - `agent-wake-poll`（长任务 one-shot wake 轮询，防 hang）
 
 **ECC 精简**

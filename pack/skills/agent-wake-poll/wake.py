@@ -17,6 +17,7 @@ import argparse
 import json
 import os
 import re
+import shlex
 import signal
 import subprocess
 import sys
@@ -164,21 +165,81 @@ def kill_wake(tag, st=None):
 
 
 def script_of(launch_cmd):
-    for tok in (launch_cmd or "").split():
+    try:
+        tokens = shlex.split(launch_cmd or "")
+    except ValueError:
+        return None
+    for tok in tokens:
         if tok.endswith(".sh") and tok.startswith("/"):
             return tok
     return None
 
 
+# ---------------------------------------------------------------- 显卡利用率
+
+GPU_WINDOW = 3600
+
+
+def gpu_util_now():
+    """本机各卡 util 的均值；无 nvidia-smi 返回 (None, 0)。"""
+    try:
+        r = sh("nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits", 30)
+    except subprocess.TimeoutExpired:
+        return None, 0
+    vals = [int(x) for x in r.stdout.split() if x.strip().isdigit()]
+    if not vals:
+        return None, 0
+    return sum(vals) // len(vals), len(vals)
+
+
+def sample_gpu(st):
+    """采一个点并按 1h 窗口裁剪；采样期由 arm 在 sleep 中每分钟推进一次。"""
+    util, n = gpu_util_now()
+    ts = int(time.time())
+    keep = [s for s in (st.get("gpu_samples") or []) if ts - s[0] <= GPU_WINDOW]
+    if util is not None:
+        keep.append([ts, util])
+        st["local_gpus"] = n
+    st["gpu_samples"] = keep[-120:]
+
+
+def gpu_line(st):
+    ts = int(time.time())
+    vals = [u for t, u in (st.get("gpu_samples") or []) if ts - t <= GPU_WINDOW]
+    if not vals:
+        return "显卡利用率：—"
+    span = hm(ts - min(t for t, _ in st["gpu_samples"] if ts - t <= GPU_WINDOW))
+    return (f"显卡利用率：{sum(vals) // len(vals)}%（本机 {st.get('local_gpus') or '?'} 卡"
+            f"，近 {span} / {len(vals)} 个采样点均值）")
+
+
 # ---------------------------------------------------------------- 汇报
+
+
+def domain_lines(job):
+    """项目自带汇报口径的输出，原样置顶。
+
+    单标量 metric 说不出「哪个单元、哪个变体、几种产物各多少」：把 latent 与 mp4 合成一个
+    78/200 之后，读的人没法和上一轮比对，也不知道离交付还差什么。这类字段只有项目自己拼得出来。
+    """
+    cmd = job.get("report_cmd")
+    if not cmd:
+        return []
+    try:
+        r = sh(cmd)
+    except subprocess.TimeoutExpired:
+        return [f"WARN: report_cmd 超时，汇报缺项目口径: {cmd}"]
+    lines = [x for x in r.stdout.splitlines() if x.strip()]
+    return lines or [f"WARN: report_cmd 无输出，汇报缺项目口径: {cmd} / stderr={r.stderr[-200:]!r}"]
 
 
 def report(st, extra_lines):
     job = st["queue"][st["current"]]
     script = script_of(job.get("launch_cmd"))
-    lines = [
+    lines = domain_lines(job) + [
         f"本机地址：{st.get('ip') or '—'}",
-        f"总卡数：{st.get('global_gpus') or '—'}",
+        f"本机参与卡数：{st.get('global_gpus') or '—'}",
+        gpu_line(st),
         f"完整脚本：{script or '—（launch_cmd 未写成参数写死的独立脚本，违反 hard rule 8）'}",
         f"日志目录：{job.get('log_dir') or '—'}",
         f"输出目录：{job.get('output_dir') or '—'}",
@@ -186,6 +247,24 @@ def report(st, extra_lines):
     ]
     lines += extra_lines
     print("\n".join(lines))
+
+
+def ms(seconds):
+    seconds = int(seconds)
+    return f"{seconds // 60}m{seconds % 60:02d}s" if seconds < 3600 else hm(seconds)
+
+
+def rate_line(st, end=None):
+    """单位产物的墙钟 + 卡时；metric 或总卡数缺失时逐项降级。"""
+    job = st["queue"][st["current"]]
+    started = parse_dt(job.get("started_at"))
+    cur = job.get("metric_now") or 0
+    if cur <= 0 or not started:
+        return "速率：—"
+    per = max(1.0, ((end or now_dt()) - started).total_seconds()) / cur
+    gpus = st.get("global_gpus")
+    cost = f"、{per * gpus / 3600:.2f} 卡·h（按 {gpus} 卡）" if gpus else "（总卡数未知，无法折算卡时）"
+    return f"速率：{job.get('metric_name') or 'item'} 每条 {ms(per)} 墙钟{cost}"
 
 
 def progress_lines(st, delay):
@@ -200,6 +279,7 @@ def progress_lines(st, delay):
     return [
         f"下次检查：{st.get('next_wake') or '—'}（delay={delay}s）" if delay else "下次检查：—",
         f"本作业：{cur}/{target or '—'}（{pct}），预计 {st.get('eta') or '—'} 完成",
+        rate_line(st),
         f"任务队列：预计 {st.get('eta_queue') or '—'} 完成",
         f"已用/剩余：{elapsed} / {remain}",
     ]
@@ -266,6 +346,8 @@ def cmd_new(a):
         "wake_tag": tag,
         "ip": ip,
         "global_gpus": a.global_gpus,
+        "local_gpus": None,
+        "gpu_samples": [],
         "next_wake": None,
         "wake_pid": None,
         "eta": None,
@@ -291,6 +373,7 @@ def new_job(jid, a):
         "started_at": None,
         "metric_name": a.metric_name or "items",
         "metric_cmd": a.metric_cmd,
+        "report_cmd": a.report_cmd or "",
         "done_grep": a.done_grep or "",
         "metric_now": 0,
         "metric_target": a.metric_target,
@@ -308,8 +391,12 @@ def audit_launch(launch_cmd):
     script = script_of(launch_cmd)
     if not script:
         return ["launch_cmd 不是绝对路径的独立 .sh 脚本：参数不入库，事后无法还原这批结果的配置"]
-    if re.search(r"^\s*\w+=\S+\s+(bash|sh)\b", launch_cmd or ""):
-        w.append("launch_cmd 在命令行挂了 env：漏传会静默回落到脚本默认值（通常是上次实验的配置）")
+    try:
+        tokens = shlex.split(launch_cmd or "")
+    except ValueError:
+        tokens = []
+    if tokens != ["bash", script]:
+        w.append("launch_cmd 必须严格写成 `bash /项目目录/script.sh`：禁止环境变量和脚本参数")
     if not os.path.exists(script):
         return w + [f"脚本不存在: {script}"]
     with open(script, errors="replace") as f:
@@ -318,6 +405,17 @@ def audit_launch(launch_cmd):
     code = [(i + 1, l) for i, l in enumerate(lines) if l.strip() and not l.strip().startswith("#")]
     if code and re.match(r"^\s*exec\s+\S", code[-1][1]):
         w.append(f"{script}:{code[-1][0]} 以 exec 收尾：exec 替换本进程，trap 和结尾行都不会执行")
+
+    sources_setup = any(re.search(r"(?:source|\.)\s+.*setup_env\.sh\b", l) for _, l in code)
+    releases_hold = any("gpu_hold.sh kill" in l for _, l in code)
+    traps_exit = any(re.search(r"\btrap\b.*\bEXIT\b", l) for _, l in code)
+    traps_signal = any(re.search(r"\btrap\b.*\bINT\s+TERM\b", l) for _, l in code)
+    if not sources_setup and not releases_hold:
+        w.append(f"{script}: 开头未加载项目 setup_env.sh，也未释放本机 GPU 占卡")
+    if not sources_setup and not traps_exit:
+        w.append(f"{script}: 缺少 EXIT trap，退出时不会恢复本机 GPU 占卡")
+    if not sources_setup and not traps_signal:
+        w.append(f"{script}: 缺少 INT/TERM trap，Ctrl-C/终止时可能跳过恢复处理")
 
     trap_fn = None
     for ln, l in code:
@@ -390,10 +488,12 @@ def cmd_started(a):
 
 def cmd_check(a):
     st = load(a.tag)
+    sample_gpu(st)
     if st.get("queue_complete"):
         killed = kill_wake(a.tag, st)
         save(st)
-        report(st, [f"任务队列完成：{st.get('updated_at') or '—'}", terminal_elapsed(st)])
+        report(st, [f"任务队列完成：{st.get('updated_at') or '—'}",
+                    rate_line(st, parse_dt(st.get("updated_at"))), terminal_elapsed(st)])
         print(f"killed_wake={killed or '-'}")
         print("ACTION=terminal")
         return
@@ -414,6 +514,10 @@ def cmd_check(a):
         job["status"] = "success"
     elif cur > prev:
         job["stall_count"] = 0
+    elif cur == 0 and parse_dt(job.get("started_at")) and (
+        now_dt() - parse_dt(job["started_at"])
+    ).total_seconds() < 1800:
+        job["stall_count"] = 0
     else:
         job["stall_count"] = (job.get("stall_count") or 0) + 1
     job["metric_prev"], job["metric_now"] = prev, cur
@@ -430,7 +534,8 @@ def cmd_check(a):
         if nxt:
             st["next_wake"] = None
             save(st)
-            report(st, [f"本项完成：{job['metric_name']} {cur}/{target}", f"下一项：queue[{nxt['id']}] {nxt['launch_cmd']}"])
+            report(st, [f"本项完成：{job['metric_name']} {cur}/{target}", rate_line(st),
+                        f"下一项：queue[{nxt['id']}] {nxt['launch_cmd']}"])
             print_audit(nxt["launch_cmd"])
             print("ACTION=launch")
         else:
@@ -438,7 +543,8 @@ def cmd_check(a):
             st["next_wake"] = st["eta"] = st["eta_queue"] = None
             killed = kill_wake(a.tag, st)
             save(st)
-            report(st, [f"任务队列完成：{st['updated_at']}", terminal_elapsed(st)])
+            report(st, [f"任务队列完成：{st['updated_at']}",
+                        rate_line(st, parse_dt(st["updated_at"])), terminal_elapsed(st)])
             print(f"killed_wake={killed or '-'}  记得归还独占资源（GPU 占卡）后再收工")
             print("ACTION=terminal")
         return
@@ -492,7 +598,16 @@ def cmd_arm(a):
     save(st)
     print(f"armed {tag} delay={delay}s next_wake={st['next_wake']} killed={killed or '-'}",
           flush=True)
-    time.sleep(delay)
+    left = delay
+    while left > 0:
+        time.sleep(min(60, left))
+        left -= 60
+        try:  # 每分钟采一次显卡利用率；重读 state 以免覆盖期间的 started/check 写入
+            fresh = load(tag)
+            sample_gpu(fresh)
+            save(fresh)
+        except (OSError, ValueError, SystemExit):
+            pass
     print(f"AGENT_LOOP_WAKE_{tag}", flush=True)
 
 
@@ -533,6 +648,7 @@ def main():
         sp.add_argument("--log-dir")
         sp.add_argument("--output-dir")
         sp.add_argument("--metric-name")
+        sp.add_argument("--report-cmd")
         sp.add_argument("--done-grep")
         sp.add_argument("--note")
 

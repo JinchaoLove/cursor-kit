@@ -24,6 +24,7 @@ Skills + rules for deep AI research and engineering, tuned for **multimodal inte
     ├── scientific-critical-thinking/  # 批判性分析 / claim vetting
     ├── project-development/        # 开发 / reproducible ML engineering
     ├── keep-it-simple/             # KISS 审计：砍冗余代码与文档
+    ├── code-review/                # 代码评审：安全 / 性能 / 正确性 / 可维护性
     ├── agent-wake-poll/            # 长任务 one-shot wake 轮询，防 hang
     ├── ecc-hub/                    # ECC Cursor slim router
     ├── ecc-search-first/           # research-before-coding
